@@ -2,6 +2,7 @@ package com.example.twthomeworkjava;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +10,7 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,6 +18,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.twthomeworkjava.initBanner.BannerItem;
+import com.example.twthomeworkjava.initBanner.InitBanner;
 import com.google.gson.Gson;
 import com.youth.banner.Banner;
 import com.youth.banner.BannerConfig;
@@ -30,12 +34,21 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+
+
 public class MassageAdapter  extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    private final List<Recent> massageList;
-    Context context;
+    private  List<NewsItem> newsItemList;
+    List<String> bannerImg;
+    private Context context;
     Onclick onclick;
-    private final int TYPE_HEAD = 0;
-    private final int TYPE_NORMAL = 1;
+    List<String> bannerTitle;
+    public MassageAdapter(List<String> bannerImg, List<String> bannerTitle,List<NewsItem> newsItemList, Context context) {
+        this.bannerImg = bannerImg;
+        this.bannerTitle = bannerTitle;
+        this.newsItemList=newsItemList;
+        this.context = context;
+    }
+
 
     public interface Onclick {
         void click(String str);
@@ -45,57 +58,54 @@ public class MassageAdapter  extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.onclick = aclick;
     }
 
-        public MassageAdapter(List<Recent> massageList, Context context) {
-        this.massageList = massageList;
-        this.context = context;
-    }
-
 
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        if (viewType == TYPE_NORMAL) {
+         if (viewType == Constants.TYPE_HEAD) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.banner_main, parent, false);
+            return new HeadHolder(view);
+        }else{
             View view = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.massage_item, parent, false);
             return new ViewHolderNormal(view);
-        } else if (viewType == TYPE_HEAD) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.banner_main, parent, false);
-            return new ViewHolderHead(view);
         }
-        return null;
+
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        if (position == 0) {
-            bindViewHolderHead((ViewHolderHead) holder);
+        if (position==0) {
+            bindViewHolderHead((HeadHolder) holder);
         } else {
-
             bindViewHolderNormal((ViewHolderNormal) holder, position);
-
         }
-
     }
+
 
     @Override
     public int getItemViewType(int position) {
-        if (position == TYPE_HEAD) {
-            return TYPE_HEAD;
+        if (position == 0) {
+            return Constants.TYPE_HEAD;
         }
-        return TYPE_NORMAL;
+        else {
+            return Constants.TYPE_NORMAL;
+        }
     }
 
     @Override
     public int getItemCount() {
-        return massageList.size();
+        return newsItemList.size()+1;
     }
 
-    public static class ViewHolderHead extends RecyclerView.ViewHolder {
-        Banner banner;
 
-        public ViewHolderHead(View itemView) {
-            super(itemView);
+
+
+    public static class HeadHolder extends RecyclerView.ViewHolder {
+        Banner banner;
+        public HeadHolder(View view) {
+            super(view);
             banner = itemView.findViewById(R.id.banner);
         }
     }
@@ -109,33 +119,24 @@ public class MassageAdapter  extends RecyclerView.Adapter<RecyclerView.ViewHolde
             title = itemView.findViewById(R.id.title);
             img = itemView.findViewById(R.id.image);
         }
-
-
     }
 
     private void bindViewHolderNormal(ViewHolderNormal viewHolderNormal, int position) {
-        Recent massage = massageList.get(position - 1);
-        viewHolderNormal.title.setText(massage.getTitle());
-        Glide.with(context).load(massage.getThumbnail()).into(viewHolderNormal.img);
+        NewsItem newsItem=newsItemList.get(position-1);
+        viewHolderNormal.title.setText(newsItem.getTitle());
+        Glide.with(context).load(newsItem.getImages().get(0)).into(viewHolderNormal.img);
         viewHolderNormal.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onclick.click(massage.getUrl());
+                onclick.click(newsItem.getUrl());
             }
         });
     }
 
-    private void bindViewHolderHead(ViewHolderHead viewHolderHead) {
-        List<String> bannerImg = new ArrayList<>();
-        List<String> bannerText = new ArrayList<>();
-        for (int i = 0; i < massageList.size(); i++) {
-            bannerText.add(massageList.get(i).getTitle());
-            bannerImg.add(massageList.get(i).getThumbnail());
-        }
-
+    private void bindViewHolderHead(HeadHolder viewHolderHead) {
 
         viewHolderHead.banner.setImageLoader(new ImageLoadBanner())
-                .setBannerTitles(bannerText)
+                .setBannerTitles(bannerTitle)
                 .setDelayTime(2000)   //更换时间
                 .isAutoPlay(true)    //自动播放
                 .setIndicatorGravity(BannerConfig.CENTER)    //位置
@@ -143,22 +144,29 @@ public class MassageAdapter  extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 .setBannerStyle(BannerConfig.CIRCLE_INDICATOR_TITLE_INSIDE)  //样式
                 .setImages(bannerImg)
                 .start();
-
     }
 
-    public void addFirstAll(List<Recent> list) {
-        massageList.addAll(list);
+    public void addFirstAll(List<NewsItem> list) {
+        newsItemList.addAll(list);
         notifyDataSetChanged();
     }
 
     public void clear() {
-        massageList.clear();
+        newsItemList.clear();
         notifyDataSetChanged();
     }
-
-
-
-
+//
+//    // 暴露接口，更新数据源，并修改hasMore的值，如果有增加数据，hasMore为true，否则为false
+//    public void updateList(List<Recent> newDatas, boolean hasMore) {
+//        // 在原有的数据之上增加新数据
+//        if (newDatas != null) {
+//            massageList.addAll(newDatas);
+//        }
+//        this.hasMore = hasMore;
+//        notifyDataSetChanged();
+//    }
+//
+//
 }
     class ImageLoadBanner extends ImageLoader {
         @Override

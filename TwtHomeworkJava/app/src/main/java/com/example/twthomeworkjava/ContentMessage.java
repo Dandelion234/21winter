@@ -26,43 +26,18 @@ public class ContentMessage extends AppCompatActivity {
         }
         String data=getIntent().getStringExtra("url");
         Log.d("abcdef",data);
-        sendHttp(data);
-    }
-
-    public void sendHttp(String data){
-        new Thread(()->{
-            try {
-                 OkHttpClient client = new OkHttpClient();
-                 Request request = new Request.Builder()
-                         .url(data)
-                         .build();
-                 Response response = client.newCall(request).execute();
-                 String responseData=response.body().string();
-                Gson gson=new Gson();
-                Content content=gson.fromJson(responseData,Content.class);
-                showResponse(content.getUrl());
-                }catch (Exception e){
-                e.printStackTrace();
+        WebView webView=findViewById(R.id.webView);
+        webView.loadUrl(data);
+        //webView.loadDataWithBaseURL(null,data,"text/html","utf-8",null);
+        WebSettings webSettings=webView.getSettings();
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                view.loadUrl(url);
+                return true;
             }
-        }).start();
-    }
-
-    public void showResponse(String data){
-        runOnUiThread(()->{
-            WebView webView=findViewById(R.id.webView);
-            webView.loadUrl(data);
-            //webView.loadDataWithBaseURL(null,data,"text/html","utf-8",null);
-            WebSettings webSettings=webView.getSettings();
-            webSettings.setUseWideViewPort(true);
-            webSettings.setLoadWithOverviewMode(true);
-
-            webView.setWebViewClient(new WebViewClient() {
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                    view.loadUrl(url);
-                    return true;
-                }
-            });
         });
 
     }
